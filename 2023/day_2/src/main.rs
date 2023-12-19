@@ -13,11 +13,7 @@ const BLUE_LIMIT: usize = 14;
 fn main() {
     let mut sum_idx = 0;
     let mut sum_pow = 0;
-    for (i, line) in read_lines("./src/input.txt")
-        .unwrap()
-        .into_iter()
-        .enumerate()
-    {
+    for (i, line) in read_lines("./input.txt").unwrap().into_iter().enumerate() {
         if let Ok(line) = line {
             let pow = compute_power(&line);
             println!("The power of game {} is {}", i + 1, pow);
