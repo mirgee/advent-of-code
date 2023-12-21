@@ -73,19 +73,13 @@ fn map_source_to_destination(map: &Vec<MapEntry>, value: u64) -> u64 {
     for entry in map.iter() {
         if value >= entry.source && value < entry.source + entry.range {
             let res = entry.destination + value - entry.source;
-            // if value == 77 {
-            //     // println!(
-            //     //     "Mapping 77 to {}, the entry is {:?}, map: {:?}",
-            //     //     res, entry, map
-            //     // );
-            // }
             return res;
         }
     }
     return value;
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+pub fn main() -> Result<(), Box<dyn Error>> {
     let content = fs::read_to_string("input.txt")?;
     let sections: Vec<&str> = content.split("\n\n").collect();
 
@@ -125,9 +119,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         // println!("Mapping actual seed {}", seed);
         let mut dest: u64 = seed;
         for map in &maps {
-            let dest_bef = dest;
             dest = map_source_to_destination(&map, dest);
-            // println!("{} -> {}", dest_bef, dest);
         }
         // println!("Mapped actual seed {} to final destination {}", seed, dest);
         dests.push(dest);
