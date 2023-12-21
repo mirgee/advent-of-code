@@ -99,34 +99,34 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         maps.push(parsed_section);
     }
 
-    // let mut dests: Vec<u64> = Vec::new();
-    // for seed in &seeds {
-    //     let mut dest: u64 = *seed;
-    //     for map in &maps {
-    //         dest = map_source_to_destination(&map, dest);
-    //     }
-    //     // println!("Mapped seed {} to final destination {}", seed, dest);
-    //     dests.push(dest);
-    // }
-
-    // println!("Minimum of destinations: {}", dests.iter().min().unwrap());
-
-    let actual_seeds = Seeds::new(seeds);
-    // println!("Actual seeds: {:?}", actual_seeds.collect::<Vec<_>>());
-
     let mut dests: Vec<u64> = Vec::new();
-    for seed in actual_seeds {
-        // println!("Mapping actual seed {}", seed);
-        let mut dest: u64 = seed;
+    for seed in &seeds {
+        let mut dest: u64 = *seed;
         for map in &maps {
             dest = map_source_to_destination(&map, dest);
         }
-        // println!("Mapped actual seed {} to final destination {}", seed, dest);
+        // println!("Mapped seed {} to final destination {}", seed, dest);
         dests.push(dest);
     }
-    println!(
-        "Actual minimum of destinations: {}",
-        dests.iter().min().unwrap()
-    );
+
+    println!("Minimum of destinations: {}", dests.iter().min().unwrap());
+
+    // let actual_seeds = Seeds::new(seeds);
+    // // println!("Actual seeds: {:?}", actual_seeds.collect::<Vec<_>>());
+
+    // let mut dests: Vec<u64> = Vec::new();
+    // for seed in actual_seeds {
+    //     // println!("Mapping actual seed {}", seed);
+    //     let mut dest: u64 = seed;
+    //     for map in &maps {
+    //         dest = map_source_to_destination(&map, dest);
+    //     }
+    //     // println!("Mapped actual seed {} to final destination {}", seed, dest);
+    //     dests.push(dest);
+    // }
+    // println!(
+    //     "Actual minimum of destinations: {}",
+    //     dests.iter().min().unwrap()
+    // );
     Ok(())
 }
