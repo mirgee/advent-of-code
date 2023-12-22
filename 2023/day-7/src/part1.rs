@@ -119,7 +119,6 @@ impl Hand {
             .any(|(_, group)| group.count() == 4)
     }
 
-    // Two cards different, three cards the same
     fn is_full_house(&self) -> bool {
         let groups = self.cards.iter().sorted().group_by(|c| *c);
         let group_counts = groups
@@ -183,13 +182,11 @@ impl PartialOrd for Hand {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         let type_cmp = self.get_hand_type().cmp(&other.get_hand_type());
         if type_cmp != std::cmp::Ordering::Equal {
-            // println!("Evaluated {} and {} as {:?}", self, other, res);
             return Some(type_cmp);
         }
         for (card1, card2) in self.cards.iter().zip(other.cards.iter()) {
             let val = card1.cmp(card2);
             if val != std::cmp::Ordering::Equal {
-                // println!("Evaluated {} and {} as {:?}", self, other, val);
                 return Some(val);
             }
         }
@@ -210,19 +207,13 @@ pub fn process(input: &str) -> miette::Result<u64, AocError> {
         let line_parts = line.split_whitespace().collect::<Vec<_>>();
         let hand: Hand = serde_json::from_str(&format!("\"{}\"", line_parts[0])).unwrap();
         let value: u64 = line_parts[1].parse().unwrap();
-        let hand_type = hand.get_hand_type();
-        (hand, value, hand_type)
+        (hand, value)
     });
-    // pairs.sorted_by_key(|(_, _, hand_type)| *hand_type);
-    let pairs = pairs.sorted_by_key(|(hand, _, _hand_type)| *hand);
+    // TODO: It would be more efficient to group by hand type and then sort within groups
+    let pairs = pairs.sorted_by_key(|(hand, _)| *hand);
     let val = pairs
         .enumerate()
-        .fold(0, |acc, (idx, (hand, value, hand_type))| {
-            let val = (value * (idx as u64 + 1));
-            // println!("{}: {} {:?}", idx + 1, hand, hand_type);
-            // println!("+ {} * {value}", idx + 1);
-            acc + val
-        });
+        .fold(0, |acc, (idx, (_, value))| acc + value * (idx as u64 + 1));
     Ok(val)
 }
 
