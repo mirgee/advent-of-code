@@ -102,10 +102,6 @@ enum HandType {
 }
 
 impl Hand {
-    fn sort(&mut self) {
-        self.cards.sort();
-    }
-
     fn is_five_of_a_kind(&self) -> bool {
         self.cards.iter().all(|c| c == &self.cards[0])
     }
