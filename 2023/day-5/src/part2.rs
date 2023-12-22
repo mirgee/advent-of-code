@@ -1,7 +1,9 @@
+use indicatif::{ParallelProgressIterator, ProgressIterator};
 use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::error::Error;
 use std::fs;
+use std::iter::Iterator;
 use std::ops::Range;
 
 #[derive(Debug, Clone)]
@@ -66,17 +68,15 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         maps.push(parsed_section);
     }
 
+    let count = seeds.iter().map(|r| r.end - r.start).sum::<u64>();
+
     let min_location = seeds
         .into_par_iter()
-        .map(|range: Range<u64>| -> u64 {
-            range
-                .into_par_iter()
-                .map(|seed| {
-                    maps.iter()
-                        .fold(seed, |dest, map| map_source_to_destination(map, dest))
-                })
-                .min()
-                .unwrap()
+        .flatten()
+        .progress_count(count)
+        .map(|seed: u64| -> u64 {
+            maps.iter()
+                .fold(seed, |dest, map| map_source_to_destination(map, dest))
         })
         .min()
         .unwrap();
