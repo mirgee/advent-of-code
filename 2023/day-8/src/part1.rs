@@ -48,9 +48,20 @@ fn parse_input(input: &str) -> IResult<&str, (Vec<Direction>, HashMap<&str, (&st
 #[tracing::instrument]
 pub fn process(input: &str) -> miette::Result<u64, AocError> {
     let (_, (directions, map)) = parse_input(input).unwrap();
-    println!("directions: {:?}", directions);
-    println!("map: {:?}", map);
-    Ok(0)
+    let mut current = "AAA";
+    let mut num_steps = 0;
+    for direction in directions.iter().cycle() {
+        num_steps += 1;
+        let (left, right) = map.get(current).unwrap();
+        match direction {
+            Direction::L => current = left,
+            Direction::R => current = right,
+        }
+        if current == "ZZZ" {
+            break;
+        }
+    }
+    Ok(num_steps)
 }
 
 #[cfg(test)]
@@ -58,7 +69,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_process() -> miette::Result<()> {
+    fn test_process_0() -> miette::Result<()> {
         let input = "RL
 
 AAA = (BBB, CCC)
@@ -67,6 +78,17 @@ CCC = (ZZZ, GGG)
 DDD = (DDD, DDD)
 EEE = (EEE, EEE)
 GGG = (GGG, GGG)
+ZZZ = (ZZZ, ZZZ)";
+        assert_eq!(2, process(input)?);
+        Ok(())
+    }
+
+    #[test]
+    fn test_process_1() -> miette::Result<()> {
+        let input = "LLR
+
+AAA = (BBB, BBB)
+BBB = (AAA, ZZZ)
 ZZZ = (ZZZ, ZZZ)";
         assert_eq!(6, process(input)?);
         Ok(())
