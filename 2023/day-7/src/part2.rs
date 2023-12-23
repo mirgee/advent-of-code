@@ -16,30 +16,30 @@ enum Card {
 
 impl PartialOrd for Card {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match (self, other) {
-            (Card::A, Card::A) => Some(std::cmp::Ordering::Equal),
-            (Card::A, _) => Some(std::cmp::Ordering::Greater),
-            (_, Card::A) => Some(std::cmp::Ordering::Less),
-            (Card::K, Card::K) => Some(std::cmp::Ordering::Equal),
-            (Card::K, _) => Some(std::cmp::Ordering::Greater),
-            (_, Card::K) => Some(std::cmp::Ordering::Less),
-            (Card::Q, Card::Q) => Some(std::cmp::Ordering::Equal),
-            (Card::Q, _) => Some(std::cmp::Ordering::Greater),
-            (_, Card::Q) => Some(std::cmp::Ordering::Less),
-            (Card::T, Card::T) => Some(std::cmp::Ordering::Equal),
-            (Card::T, _) => Some(std::cmp::Ordering::Greater),
-            (_, Card::T) => Some(std::cmp::Ordering::Less),
-            (Card::N(n1), Card::N(n2)) => Some(n1.cmp(n2)),
-            (Card::J, Card::J) => Some(std::cmp::Ordering::Equal),
-            (Card::J, _) => Some(std::cmp::Ordering::Less),
-            (_, Card::J) => Some(std::cmp::Ordering::Greater),
-        }
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for Card {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
+        match (self, other) {
+            (Card::A, Card::A) => std::cmp::Ordering::Equal,
+            (Card::A, _) => std::cmp::Ordering::Greater,
+            (_, Card::A) => std::cmp::Ordering::Less,
+            (Card::K, Card::K) => std::cmp::Ordering::Equal,
+            (Card::K, _) => std::cmp::Ordering::Greater,
+            (_, Card::K) => std::cmp::Ordering::Less,
+            (Card::Q, Card::Q) => std::cmp::Ordering::Equal,
+            (Card::Q, _) => std::cmp::Ordering::Greater,
+            (_, Card::Q) => std::cmp::Ordering::Less,
+            (Card::T, Card::T) => std::cmp::Ordering::Equal,
+            (Card::T, _) => std::cmp::Ordering::Greater,
+            (_, Card::T) => std::cmp::Ordering::Less,
+            (Card::N(n1), Card::N(n2)) => n1.cmp(n2),
+            (Card::J, Card::J) => std::cmp::Ordering::Equal,
+            (Card::J, _) => std::cmp::Ordering::Less,
+            (_, Card::J) => std::cmp::Ordering::Greater,
+        }
     }
 }
 
@@ -85,7 +85,7 @@ impl<'de> Deserialize<'de> for Hand {
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        let cards = s.chars().map(|s| Card::from_char(s)).collect_vec();
+        let cards = s.chars().map(Card::from_char).collect_vec();
         Ok(Hand {
             cards: [cards[0], cards[1], cards[2], cards[3], cards[4]],
         })
@@ -168,23 +168,23 @@ impl HandCounts<'_> {
 
 impl PartialOrd for Hand {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        let type_cmp = self.get_hand_type().cmp(&other.get_hand_type());
-        if type_cmp != std::cmp::Ordering::Equal {
-            return Some(type_cmp);
-        }
-        for (card1, card2) in self.cards.iter().zip(other.cards.iter()) {
-            let val = card1.cmp(card2);
-            if val != std::cmp::Ordering::Equal {
-                return Some(val);
-            }
-        }
-        None
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for Hand {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
+        let type_cmp = self.get_hand_type().cmp(&other.get_hand_type());
+        if type_cmp != std::cmp::Ordering::Equal {
+            return type_cmp;
+        }
+        for (card1, card2) in self.cards.iter().zip(other.cards.iter()) {
+            let val = card1.cmp(card2);
+            if val != std::cmp::Ordering::Equal {
+                return val;
+            }
+        }
+        std::cmp::Ordering::Equal
     }
 }
 
