@@ -50,20 +50,53 @@ fn parse_input(input: &str) -> IResult<&str, (Vec<Direction>, HashMap<&str, (&st
 pub fn process(input: &str) -> miette::Result<u64, AocError> {
     let (_, (directions, map)) = parse_input(input).unwrap();
     let mut directions_cycle = directions.iter().cycle();
-    let mut current: Vec<&str> = map.keys().filter(|k| k.ends_with('A')).cloned().collect();
-    let mut num_steps = 0;
-    while !current.iter().all(|pos| pos.ends_with('Z')) {
+    let mut current: Vec<(&str, u64, bool)> = map
+        .keys()
+        .filter(|k| k.ends_with('A'))
+        .map(|pos| (*pos, 0, false))
+        .collect();
+    // println!("{:?}", current);
+    while !current.iter().all(|(_, _, did_finish)| did_finish == &true) {
         let direction = directions_cycle.next().unwrap();
         current = current
-            .par_iter()
-            .map(|pos| match direction {
-                Direction::L => map[pos].0,
-                Direction::R => map[pos].1,
+            .iter()
+            // .skip_while(|(_, _, did_finish)| did_finish == &true)
+            .map(|(pos, steps, did_finish)| {
+                if did_finish == &true {
+                    return (*pos, *steps, *did_finish);
+                }
+                let steps = steps + 1;
+                let next_pos = match direction {
+                    Direction::L => map.get(pos).unwrap().0,
+                    Direction::R => map.get(pos).unwrap().1,
+                };
+                let did_finish = next_pos.ends_with('Z');
+                (next_pos, steps, did_finish)
             })
             .collect();
-        num_steps += 1;
+        // println!("{:?}", current);
     }
+    let num_steps = lcm(&current
+        .iter()
+        .map(|(_, steps, _)| *steps)
+        .collect::<Vec<u64>>());
     Ok(num_steps)
+}
+
+fn lcm(nums: &[u64]) -> u64 {
+    fn gcd(a: u64, b: u64) -> u64 {
+        if b == 0 {
+            return a;
+        }
+        gcd(b, a % b)
+    }
+
+    if nums.len() == 1 {
+        return nums[0];
+    }
+    let a = nums[0];
+    let b = lcm(&nums[1..]);
+    a * b / gcd(a, b)
 }
 
 #[cfg(test)]
