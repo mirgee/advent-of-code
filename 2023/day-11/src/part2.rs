@@ -1,7 +1,7 @@
 use crate::custom_error::AocError;
 
 #[tracing::instrument]
-pub fn process(input: &str) -> miette::Result<u64, AocError> {
+pub fn process(input: &str) -> miette::Result<String, AocError> {
     todo!("day 01 - part 2");
 }
 
@@ -14,7 +14,7 @@ mod tests {
     #[rstest]
     #[case("", "")]
     #[test_log::test]
-    fn test_process(#[case] input: &str, #[case] output: u64) -> miette::Result<()> {
+    fn test_process(#[case] input: &str, #[case] output: &str) -> miette::Result<()> {
         todo!("haven't built test yet");
         assert_eq!(output, process(input)?);
         Ok(())
