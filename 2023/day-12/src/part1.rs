@@ -43,18 +43,19 @@ fn is_valid(line: &Vec<Item>, contiguous_counts_expected: &Vec<u64>) -> bool {
 }
 
 fn backtrack_arrangements(
-    line: &Vec<Item>,
+    line: &mut Vec<Item>,
     contiguous_counts: &Vec<u64>,
     arrangements_count: u64,
 ) -> u64 {
     let first_unknown_idx = line.iter().position(|&x| x == Item::Unknown);
     if let Some(idx) = first_unknown_idx {
-        let mut line = line.clone();
         let mut arrangements_count = arrangements_count;
         for item in vec![Item::Functional, Item::Broken] {
+            let prev_item = line[idx];
             line[idx] = item;
             arrangements_count =
-                backtrack_arrangements(&line, contiguous_counts, arrangements_count);
+                backtrack_arrangements(line, contiguous_counts, arrangements_count);
+            line[idx] = prev_item;
         }
         arrangements_count
     } else {
@@ -70,8 +71,9 @@ fn backtrack_arrangements(
 pub fn process(input: &str) -> miette::Result<u64, AocError> {
     let (_, output) = parse_input(input).unwrap();
     let mut arrangements_count = 0;
-    for (line, contiguous_counts) in output {
-        arrangements_count = backtrack_arrangements(&line, &contiguous_counts, arrangements_count);
+    for (mut line, contiguous_counts) in output {
+        arrangements_count =
+            backtrack_arrangements(&mut line, &contiguous_counts, arrangements_count);
     }
     Ok(arrangements_count)
 }
