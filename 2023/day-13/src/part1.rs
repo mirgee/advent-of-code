@@ -25,44 +25,32 @@ fn parse_input(input: &str) -> IResult<&str, Vec<Vec<Vec<bool>>>> {
     )(input)
 }
 
-fn is_reflected_across_column(matrix: &Array2<&bool>, column: usize) -> bool {
-    let mut i = 1;
-    while column >= i && column + i < matrix.shape()[1] {
-        if matrix.column(column - i) != matrix.column(column + i) {
-            return false;
+fn find_vertical_reflection_axis(matrix: &Array2<&bool>) -> Option<u64> {
+    'outer: for i in 0..matrix.shape()[1] - 1 {
+        let mut j = 0;
+        while i >= j && i + j + 1 < matrix.shape()[1] {
+            if matrix.column(i - j) != matrix.column(i + j + 1) {
+                continue 'outer;
+            }
+            j += 1;
         }
-        i += 1;
+        return Some(i as u64);
     }
-    return true;
+    return None;
 }
 
-fn is_reflected_across_row(matrix: &Array2<&bool>, row: usize) -> bool {
-    let mut i = 1;
-    while row >= i && row + i < matrix.shape()[0] {
-        if matrix.row(row - i) != matrix.row(row + i) {
-            return false;
+fn find_horizontal_reflection_axis(matrix: &Array2<&bool>) -> Option<u64> {
+    'outer: for i in 0..matrix.shape()[0] - 1 {
+        let mut j = 0;
+        while i >= j && i + j + 1 < matrix.shape()[0] {
+            if matrix.row(i - j) != matrix.row(i + j + 1) {
+                continue 'outer;
+            }
+            j += 1;
         }
-        i += 1;
+        return Some(i as u64);
     }
-    return true;
-}
-
-fn find_reflection_axis_column(matrix: &Array2<&bool>) -> Option<usize> {
-    for i in 1..matrix.shape()[1] {
-        if is_reflected_across_column(matrix, i) {
-            return Some(i);
-        }
-    }
-    None
-}
-
-fn find_reflection_axis_row(matrix: &Array2<&bool>) -> Option<usize> {
-    for i in 1..matrix.shape()[0] {
-        if is_reflected_across_row(matrix, i) {
-            return Some(i);
-        }
-    }
-    None
+    return None;
 }
 
 #[tracing::instrument]
@@ -74,9 +62,21 @@ pub fn process(input: &str) -> miette::Result<u64, AocError> {
             Array2::from_shape_vec((m.len(), m[0].len()), m.iter().flatten().collect()).unwrap(),
         );
     }
-    println!("{:?}", matrices[0]);
-    println!("{:?}", find_reflection_axis_column(&matrices[0]));
-    todo!()
+    let mut sum = 0;
+    for matrix in matrices {
+        if let Some(axis) = find_vertical_reflection_axis(&matrix) {
+            // println!("Found vertical reflection axis at {}", axis);
+            sum += axis + 1;
+            continue;
+        }
+        if let Some(axis) = find_horizontal_reflection_axis(&matrix) {
+            // println!("Found horizontal reflection axis at {}", axis);
+            sum += 100 * (axis + 1);
+            continue;
+        }
+        println!("No reflection axis found");
+    }
+    return Ok(sum);
 }
 
 #[cfg(test)]
