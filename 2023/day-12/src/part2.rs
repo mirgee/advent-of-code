@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use itertools::Itertools;
 use nom::{
     branch::alt,
@@ -10,17 +12,11 @@ use nom::{
 
 use crate::custom_error::AocError;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 enum Item {
     Broken,
     Functional,
     Unknown,
-}
-
-struct State {
-    curr_group_idx: usize,
-    curr_group_size: usize,
-    num_functional_since_last_broken: usize,
 }
 
 fn parse_input(input: &str) -> IResult<&str, Vec<(Vec<Item>, Vec<u64>)>> {
@@ -38,7 +34,7 @@ fn parse_input(input: &str) -> IResult<&str, Vec<(Vec<Item>, Vec<u64>)>> {
     )(input)
 }
 
-fn is_valid(line: &Vec<Item>, contiguous_counts_expected: &Vec<u64>) -> bool {
+fn is_valid(line: &[Item], contiguous_counts_expected: &[u64]) -> bool {
     let groups = line.into_iter().group_by(|key| key == &&Item::Broken);
     let contiguous_counts_actual = groups
         .into_iter()
@@ -48,71 +44,57 @@ fn is_valid(line: &Vec<Item>, contiguous_counts_expected: &Vec<u64>) -> bool {
     contiguous_counts_expected == &contiguous_counts_actual
 }
 
-fn is_possibly_valid(line: &Vec<Item>, contiguous_counts_expected: &Vec<u64>) -> bool {
-    let groups = line.into_iter().group_by(|key| key == &&Item::Broken);
-    let contiguous_counts_actual = groups
-        .into_iter()
-        .filter(|(key, _)| *key)
-        .map(|(_, group)| group.count() as u64)
-        .collect::<Vec<_>>();
-    contiguous_counts_expected
-        .iter()
-        .zip(contiguous_counts_actual.iter())
-        .all(|(expected, actual)| expected <= actual)
-}
-
 fn backtrack_arrangements(
     line: &mut Vec<Item>,
-    contiguous_counts: &Vec<u64>,
-    arrangements_count: u64,
-    state: &mut State,
+    idx: usize,
+    contiguous_counts: &[u64],
+    cache: &mut HashMap<(Vec<Item>, Vec<u64>), u64>,
 ) -> u64 {
-    let first_unknown_idx = line.iter().position(|&x| x == Item::Unknown);
-    if let Some(idx) = first_unknown_idx {
-        if !is_possibly_valid(&line[0..idx].to_vec(), &contiguous_counts) {
-            return arrangements_count;
-        }
-
-        let mut arrangements_count = arrangements_count;
-        for item in vec![Item::Functional, Item::Broken] {
-            let prev_item = line[idx];
-            line[idx] = item;
-            arrangements_count =
-                backtrack_arrangements(line, contiguous_counts, arrangements_count, state);
-            line[idx] = prev_item;
-        }
-        arrangements_count
-    } else {
-        if is_valid(line, &contiguous_counts) {
-            arrangements_count + 1
-        } else {
-            arrangements_count
-        }
+    if let Some(&cached) = cache.get(&(line.clone(), contiguous_counts.to_vec())) {
+        return cached;
     }
+
+    if idx >= line.len() {
+        return is_valid(line, contiguous_counts) as u64;
+    }
+
+    if line[idx] != Item::Unknown {
+        return backtrack_arrangements(line, idx + 1, contiguous_counts, cache);
+    }
+
+    let mut arrangements_count = 0;
+    for &item in &[Item::Functional, Item::Broken] {
+        line[idx] = item;
+        arrangements_count += backtrack_arrangements(line, idx + 1, contiguous_counts, cache);
+    }
+
+    line[idx] = Item::Unknown;
+    cache.insert(
+        (line.clone(), contiguous_counts.to_vec()),
+        arrangements_count,
+    );
+
+    arrangements_count
 }
 
 #[tracing::instrument]
 pub fn process(input: &str) -> miette::Result<u64, AocError> {
     let (_, output) = parse_input(input).unwrap();
-    let mut arrangements_count = 0;
+    let mut arrangements_count_total = 0;
+    let mut cache = HashMap::new();
     for (mut line, contiguous_counts) in output {
-        let mut state = State {
-            curr_group_idx: 0,
-            curr_group_size: 0,
-            num_functional_since_last_broken: 0,
-        };
         line.push(Item::Unknown);
         let mut repeating_line = line.repeat(5);
         repeating_line.pop();
         let repeating_contiguous_counts = contiguous_counts.repeat(5);
-        arrangements_count = backtrack_arrangements(
+        arrangements_count_total += backtrack_arrangements(
             &mut repeating_line,
+            0,
             &repeating_contiguous_counts,
-            arrangements_count,
-            &mut state,
+            &mut cache,
         );
     }
-    Ok(arrangements_count)
+    Ok(arrangements_count_total)
 }
 
 #[cfg(test)]
