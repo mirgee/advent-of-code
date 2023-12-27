@@ -55,62 +55,81 @@ fn parse_input(input: &str) -> IResult<&str, Vec<(Vec<Item>, Vec<u64>)>> {
     )(input)
 }
 
-fn satisfiable(line: &[Item], range: Range<usize>) -> bool {
+fn satisfiable(line: &[Item], start: usize, end: usize) -> bool {
     // Not if out of bounds
-    if range.end > line.len() {
+    // Note that we can't start the beginning because there is always ending of a contiguous group
+    // right next to it
+    if start < 1 || end >= line.len() {
         return false;
     }
+
+    // Not if neighbored by a #
+    if line[start - 1] == Item::Broken || (end + 1 < line.len() && line[end + 1] == Item::Broken) {
+        return false;
+    }
+
     // Not if overlaps a .
-    if line[range.start..=range.end]
+    if line[start..=end]
         .iter()
         .any(|&item| item == Item::Functional)
     {
         return false;
     }
-    // Not if neighbored by a #
-    if (range.start > 0 && line[range.start - 1] == Item::Broken)
-        || (range.end < line.len() - 1 && line[range.end + 1] == Item::Broken)
-    {
-        return false;
-    }
     // Not if skips a group
-    if line[..range.start].iter().any(|&item| item == Item::Broken) {
+    if line[..start].iter().any(|&item| item == Item::Broken) {
         return false;
     }
-    println!(
-        "Evaluated line {:?} witth range {:?} as satisfiable",
-        line, range,
-    );
     return true;
 }
 
 fn backtrack_arrangements(
     line: &[Item],
     contiguous_counts: &[u64],
-    cache: &HashMap<(&[Item], &[u64]), u64>,
+    cache: &mut HashMap<(Vec<Item>, Vec<u64>), u64>,
 ) -> u64 {
+    let key = (line.to_vec(), contiguous_counts.to_vec());
+    if let Some(&cached) = cache.get(&key) {
+        return cached;
+    }
+
     if contiguous_counts.len() == 0 {
         if line.iter().contains(&Item::Broken) {
             return 0;
         } else {
-            println!("Valid line ending {:?}", line);
             return 1;
         }
     }
 
-    let group_size = contiguous_counts[0];
-
+    let group_size = contiguous_counts[0] as usize;
     let mut num_arrangements = 0;
-    for end in 0..line.len() {
-        if let Some(start) = end.checked_sub(group_size.checked_sub(1).unwrap().try_into().unwrap())
-        {
-            if satisfiable(line, start..end) {
-                let res = backtrack_arrangements(&line[end + 1..], &contiguous_counts[1..], cache);
-                println!("Found {} arrangements on line {}", res, Printables(line));
-                num_arrangements += res;
-            }
+
+    if group_size > line.len() {
+        return 0;
+    }
+
+    for start in 0..=line.len() - group_size {
+        let end = start + group_size - 1;
+        if satisfiable(line, start, end) {
+            // println!(
+            //     "Found satisfiable range {}..={} on line {} with contiguous counts {:?}",
+            //     start,
+            //     end,
+            //     Printables(line),
+            //     contiguous_counts
+            // );
+            let res = backtrack_arrangements(&line[end + 1..], &contiguous_counts[1..], cache);
+            // println!(
+            //     "Found {} arrangements on line {} with contiguous counts {:?} and range {}..={}",
+            //     res,
+            //     Printables(line),
+            //     contiguous_counts,
+            //     start,
+            //     end
+            // );
+            num_arrangements += res;
         }
     }
+    cache.insert(key, num_arrangements);
     return num_arrangements;
 }
 
@@ -120,6 +139,7 @@ pub fn process(input: &str) -> miette::Result<u64, AocError> {
     let mut arrangements_count_total = 0;
     let mut cache = HashMap::new();
     for (mut line, contiguous_counts) in output {
+        line.insert(0, Item::Functional);
         arrangements_count_total +=
             backtrack_arrangements(&mut line, &contiguous_counts, &mut cache);
     }
@@ -133,7 +153,15 @@ mod tests {
     use super::*;
 
     #[rstest]
-    #[case("???.### 1,1,3", 1)]
+    #[case(
+        "???.### 1,1,3
+.??..??...?##. 1,1,3
+?#?#?#?#?#?#?#? 1,3,1,6
+????.#...#... 4,1,1
+????.######..#####. 1,6,5
+?###???????? 3,2,1",
+        21
+    )]
     #[test_log::test]
     fn test_process(#[case] input: &str, #[case] output: u64) -> miette::Result<()> {
         assert_eq!(output, process(input)?);
