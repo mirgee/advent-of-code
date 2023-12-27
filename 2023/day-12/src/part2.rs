@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use itertools::Itertools;
 use nom::{
@@ -19,6 +19,27 @@ enum Item {
     Unknown,
 }
 
+impl Display for Item {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Item::Broken => write!(f, "#"),
+            Item::Functional => write!(f, "."),
+            Item::Unknown => write!(f, "?"),
+        }
+    }
+}
+
+struct Printables<'a>(&'a [Item]);
+
+impl Display for Printables<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for item in self.0.iter() {
+            write!(f, "{}", item)?;
+        }
+        Ok(())
+    }
+}
+
 fn parse_input(input: &str) -> IResult<&str, Vec<(Vec<Item>, Vec<u64>)>> {
     separated_list1(
         line_ending,
@@ -34,47 +55,82 @@ fn parse_input(input: &str) -> IResult<&str, Vec<(Vec<Item>, Vec<u64>)>> {
     )(input)
 }
 
-fn is_valid(line: &[Item], contiguous_counts_expected: &[u64]) -> bool {
-    let groups = line.into_iter().group_by(|key| key == &&Item::Broken);
-    let contiguous_counts_actual = groups
-        .into_iter()
-        .filter(|(key, _)| *key)
-        .map(|(_, group)| group.count() as u64)
-        .collect::<Vec<_>>();
-    contiguous_counts_expected == &contiguous_counts_actual
+fn satisfiable(line: &[Item], start: usize, end: usize) -> bool {
+    // Not if out of bounds
+    // Note that we can't start the beginning because there is always ending of a contiguous group
+    // right next to it
+    if start < 1 || end >= line.len() {
+        return false;
+    }
+
+    // Not if neighbored by a #
+    if line[start - 1] == Item::Broken || (end + 1 < line.len() && line[end + 1] == Item::Broken) {
+        return false;
+    }
+
+    // Not if overlaps a .
+    if line[start..=end]
+        .iter()
+        .any(|&item| item == Item::Functional)
+    {
+        return false;
+    }
+    // Not if skips a group
+    if line[..start].iter().any(|&item| item == Item::Broken) {
+        return false;
+    }
+    return true;
 }
 
 fn backtrack_arrangements(
-    line: &mut Vec<Item>,
-    idx: usize,
+    line: &[Item],
     contiguous_counts: &[u64],
     cache: &mut HashMap<(Vec<Item>, Vec<u64>), u64>,
 ) -> u64 {
-    if let Some(&cached) = cache.get(&(line.clone(), contiguous_counts.to_vec())) {
+    let key = (line.to_vec(), contiguous_counts.to_vec());
+    if let Some(&cached) = cache.get(&key) {
         return cached;
     }
 
-    if idx >= line.len() {
-        return is_valid(line, contiguous_counts) as u64;
+    if contiguous_counts.len() == 0 {
+        if line.iter().contains(&Item::Broken) {
+            return 0;
+        } else {
+            return 1;
+        }
     }
 
-    if line[idx] != Item::Unknown {
-        return backtrack_arrangements(line, idx + 1, contiguous_counts, cache);
+    let group_size = contiguous_counts[0] as usize;
+    let mut num_arrangements = 0;
+
+    if group_size > line.len() {
+        return 0;
     }
 
-    let mut arrangements_count = 0;
-    for &item in &[Item::Functional, Item::Broken] {
-        line[idx] = item;
-        arrangements_count += backtrack_arrangements(line, idx + 1, contiguous_counts, cache);
+    for start in 0..=line.len() - group_size {
+        let end = start + group_size - 1;
+        if satisfiable(line, start, end) {
+            // println!(
+            //     "Found satisfiable range {}..={} on line {} with contiguous counts {:?}",
+            //     start,
+            //     end,
+            //     Printables(line),
+            //     contiguous_counts
+            // );
+            let res = backtrack_arrangements(&line[end + 1..], &contiguous_counts[1..], cache);
+            // println!(
+            //     "Found {} arrangements on line {} with contiguous counts {:?} and range {}..={}",
+            //     res,
+            //     Printables(line),
+            //     contiguous_counts,
+            //     start,
+            //     end
+            // );
+            num_arrangements += res;
+        }
     }
-
-    line[idx] = Item::Unknown;
-    cache.insert(
-        (line.clone(), contiguous_counts.to_vec()),
-        arrangements_count,
-    );
-
-    arrangements_count
+    cache.insert(key, num_arrangements);
+    return num_arrangements;
 }
 
 #[tracing::instrument]
@@ -86,10 +142,10 @@ pub fn process(input: &str) -> miette::Result<u64, AocError> {
         line.push(Item::Unknown);
         let mut repeating_line = line.repeat(5);
         repeating_line.pop();
+        repeating_line.insert(0, Item::Functional);
         let repeating_contiguous_counts = contiguous_counts.repeat(5);
         arrangements_count_total += backtrack_arrangements(
             &mut repeating_line,
-            0,
             &repeating_contiguous_counts,
             &mut cache,
         );
@@ -116,18 +172,6 @@ mod tests {
     #[test_log::test]
     fn test_process(#[case] input: &str, #[case] output: u64) -> miette::Result<()> {
         assert_eq!(output, process(input)?);
-        Ok(())
-    }
-
-    #[rstest]
-    #[case("#.#.### 1,1,3", true)]
-    #[case("##..### 1,1,3", false)]
-    #[case("#...### 1,1,3", false)]
-    #[case("....### 1,1,3", false)]
-    #[test_log::test]
-    fn test_valid(#[case] input: &str, #[case] output: bool) -> miette::Result<()> {
-        let (line, contiguous_counts) = parse_input(input).unwrap().1[0].clone();
-        assert_eq!(output, is_valid(&line, &contiguous_counts));
         Ok(())
     }
 }
