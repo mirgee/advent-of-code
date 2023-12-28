@@ -322,6 +322,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "day-14"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "dhat",
+ "itertools 0.12.0",
+ "miette",
+ "ndarray",
+ "nom",
+ "rayon",
+ "rstest",
+ "serde",
+ "serde_json",
+ "test-log",
+ "thiserror",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "day-2"
 version = "0.1.0"
 dependencies = [
