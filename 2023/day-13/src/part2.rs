@@ -101,42 +101,40 @@ pub fn process(input: &str) -> miette::Result<u64, AocError> {
     let mut old_axes = HashMap::new();
     for (idx, matrix) in matrices.iter().enumerate() {
         if let Some(axis) = find_vertical_reflection_axis(&matrix) {
-            // println!("Found vertical reflection axis at {}", axis);
             old_axes.insert(idx, ('V', axis));
             continue;
         }
         if let Some(axis) = find_horizontal_reflection_axis(&matrix) {
-            // println!("Found horizontal reflection axis at {}", axis);
             old_axes.insert(idx, ('H', axis));
             continue;
         }
         println!("No reflection axis found");
     }
 
-    println!("Old axes: {:?}", old_axes);
     let mut sum = 0;
-    'outer: for (matrix_idx, mut matrix) in matrices.into_iter().enumerate() {
+    'outer: for (matrix_idx, matrix) in matrices.into_iter().enumerate() {
         for i in 0..matrix.shape()[0] {
             for j in 0..matrix.shape()[1] {
-                println!("FLIPPING {} {}", i, j);
                 let mut matrix_new = matrix.clone();
                 let el = matrix_new.get_mut((i, j)).unwrap();
                 *el = !*el;
-                if let Some(axis) = find_vertical_reflection_axis(&matrix_new) {
-                    println!("Found vertical reflection axis at {}", axis);
+                let vertical_axes = find_vertical_reflection_axes(&matrix_new);
+                let filtered_vertical_axes = vertical_axes.iter().filter(|v| {
                     let (old_axis_orientation, old_axis) = old_axes.get(&matrix_idx).unwrap();
-                    if !(*old_axis_orientation == 'V' && *old_axis == axis) {
-                        sum += axis + 1;
-                        continue 'outer;
-                    }
+                    !(*old_axis_orientation == 'V' && *old_axis == **v)
+                });
+                let horizontal_axes = find_horizontal_reflection_axes(&matrix_new);
+                let filtered_horizontal_axes = horizontal_axes.iter().filter(|v| {
+                    let (old_axis_orientation, old_axis) = old_axes.get(&matrix_idx).unwrap();
+                    !(*old_axis_orientation == 'H' && *old_axis == **v)
+                });
+                for axis in filtered_vertical_axes {
+                    sum += axis + 1;
+                    continue 'outer;
                 }
-                if let Some(axis) = find_horizontal_reflection_axis(&matrix_new) {
-                    println!("Found horizontal reflection axis at {}", axis);
-                    let (old_axis_orientation, old_axis) = old_axes.get(&matrix_idx).unwrap();
-                    if !(*old_axis_orientation == 'H' && *old_axis == axis) {
-                        sum += 100 * (axis + 1);
-                        continue 'outer;
-                    }
+                for axis in filtered_horizontal_axes {
+                    sum += 100 * (axis + 1);
+                    continue 'outer;
                 }
             }
         }
@@ -267,6 +265,19 @@ mod tests {
 #########.##.####",
         Some(10)
     )]
+    fn test_find_vertical_reflection_axis(#[case] input: &str, #[case] output: Option<u64>) {
+        let (_, matrices) = parse_input(input).unwrap();
+        let matrix = Array2::from_shape_vec(
+            (matrices[0].len(), matrices[0][0].len()),
+            matrices[0].iter().flatten().map(|v| *v).collect(),
+        )
+        .unwrap();
+        let axes = find_vertical_reflection_axes(&matrix);
+        println!("Axes: {:?}", axes);
+        assert_eq!(output, find_vertical_reflection_axis(&matrix));
+    }
+
+    #[rstest]
     #[case(
         "###.##.##
 ##.####.#
@@ -285,17 +296,15 @@ mod tests {
 ...####..
 ....##...
 ##.####.#",
-        Some(4)
+        vec![0, 4]
     )]
-    fn test_find_vertical_reflection_axis(#[case] input: &str, #[case] output: Option<u64>) {
+    fn test_find_vertical_reflection_axes(#[case] input: &str, #[case] output: Vec<u64>) {
         let (_, matrices) = parse_input(input).unwrap();
         let matrix = Array2::from_shape_vec(
             (matrices[0].len(), matrices[0][0].len()),
             matrices[0].iter().flatten().map(|v| *v).collect(),
         )
         .unwrap();
-        let axes = find_vertical_reflection_axes(&matrix);
-        println!("Axes: {:?}", axes);
-        // assert_eq!(output, find_vertical_reflection_axis(&matrix));
+        assert_eq!(output, find_vertical_reflection_axes(&matrix));
     }
 }
