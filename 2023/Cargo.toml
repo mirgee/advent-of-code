@@ -5,6 +5,7 @@ members = ["day-*"]
 default-members = ["day-*"]
 
 [workspace.dependencies]
+indicatif = "0.17.7"
 itertools = "0.12.0"
 rayon = "1.8.0"
 tracing = "0.1.40"
